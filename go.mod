@@ -1,4 +1,4 @@
-module github.com/google/gnostic-grpc
+module github.com/everscale-public/gnostic-grpc
 
 go 1.20
 

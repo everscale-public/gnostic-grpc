@@ -32,18 +32,24 @@ func RunProtoGenerator(env *plugins.Environment) {
 	packageName, err := resolvePackageName(fileName)
 	env.RespondAndExitIfError(err)
 
+	// First pass: extract the OpenAPI document and run the checker.
+	var metadata *SchemaMetadata
 	inputDocumentType := env.Request.Models[0].TypeUrl
 	for _, model := range env.Request.Models {
-		switch model.TypeUrl {
-		case "openapi.v3.Document":
+		if model.TypeUrl == "openapi.v3.Document" {
 			openAPIdocument := &openapiv3.Document{}
 			err := proto.Unmarshal(model.Value, openAPIdocument)
-
 			if err == nil {
 				featureChecker := NewGrpcChecker(openAPIdocument)
 				env.Response.Messages = featureChecker.Run()
+				metadata = NewSchemaMetadata(openAPIdocument)
 			}
-		case "surface.v1.Model":
+		}
+	}
+
+	// Second pass: process the surface model with metadata.
+	for _, model := range env.Request.Models {
+		if model.TypeUrl == "surface.v1.Model" {
 			surfaceModel := &surface.Model{}
 			err = proto.Unmarshal(model.Value, surfaceModel)
 			if err == nil {
@@ -51,7 +57,7 @@ func RunProtoGenerator(env *plugins.Environment) {
 				NewProtoLanguageModel().Prepare(surfaceModel, inputDocumentType)
 
 				// Create the renderer.
-				renderer := NewRenderer(surfaceModel)
+				renderer := NewRenderer(surfaceModel, metadata)
 				renderer.Package = packageName
 
 				// Run the renderer to generate files and add them to the response object.

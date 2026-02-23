@@ -17,9 +17,9 @@ message Error {
 }
 
 message Person {
-  int64 id = 1;
+  optional int64 id = 1;
 
-  int64 age = 2;
+  optional int64 age = 2;
 
   string name = 3;
 

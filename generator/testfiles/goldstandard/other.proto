@@ -15,33 +15,33 @@ import "responses.proto";
 option go_package = ".;other";
 
 message Person {
-  int64 id = 1;
+  optional int64 id = 1;
 
-  int64 age = 2;
+  optional int64 age = 2;
 
   string name = 3;
 
   repeated string photo_urls = 4;
 
-  float height = 5;
+  optional float height = 5;
 
-  double cash = 6;
+  optional double cash = 6;
 
-  float iq = 7;
+  optional float iq = 7;
 }
 
 message Order {
-  int64 id = 1;
+  optional int64 id = 1;
 
-  int64 pet_id = 2;
+  optional int64 pet_id = 2;
 
-  int32 quantity = 3;
+  optional int32 quantity = 3;
 
-  string ship_date = 4;
+  optional string ship_date = 4;
 
-  Status status = 5;
+  optional Status status = 5;
 
-  bool complete = 6;
+  optional bool complete = 6;
 
   enum Status {
     PLACED = 0;
@@ -53,31 +53,31 @@ message Order {
 }
 
 message TestOneOfApiResponse {
-  int64 id1 = 1;
+  optional int64 id1 = 1;
 
-  int64 age = 2;
+  optional int64 age = 2;
 
-  string name = 3;
+  optional string name = 3;
 
   repeated string photo_urls = 4;
 
-  float height = 5;
+  optional float height = 5;
 
-  double cash = 6;
+  optional double cash = 6;
 
-  float iq = 7;
+  optional float iq = 7;
 
-  int64 id = 8;
+  optional int64 id = 8;
 
-  int64 pet_id = 9;
+  optional int64 pet_id = 9;
 
-  int32 quantity = 10;
+  optional int32 quantity = 10;
 
-  string ship_date = 11;
+  optional string ship_date = 11;
 
-  Status status = 12;
+  optional Status status = 12;
 
-  bool complete = 13;
+  optional bool complete = 13;
 
   enum Status {
     PLACED = 0;
@@ -89,21 +89,21 @@ message TestOneOfApiResponse {
 }
 
 message TestAnyOfApiResponse {
-  int64 id = 1;
+  optional int64 id = 1;
 
-  int64 age = 2;
+  optional int64 age = 2;
 
-  string name = 3;
+  optional string name = 3;
 
   repeated string photo_urls = 4;
 
-  float height = 5;
+  optional float height = 5;
 
-  double cash = 6;
+  optional double cash = 6;
 
-  float iq = 7;
+  optional float iq = 7;
 
-  float some_inline_property = 8;
+  optional float some_inline_property = 8;
 }
 
 //TestExernalReference2Parameters holds parameters to TestExernalReference2

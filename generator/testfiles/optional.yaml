@@ -1,0 +1,91 @@
+openapi: 3.0.0
+info:
+  title: Test API for optional field support
+  version: "1.0.0"
+  description: |
+    Tests proto3 optional field generation for different combinations
+    of required arrays and nullable flags.
+paths:
+  /testAllRequired:
+    get:
+      operationId: testAllRequired
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllRequired'
+  /testNoneRequired:
+    get:
+      operationId: testNoneRequired
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoneRequired'
+  /testMixedNullable:
+    get:
+      operationId: testMixedNullable
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MixedNullable'
+components:
+  schemas:
+    AllRequired:
+      type: object
+      required:
+        - name
+        - age
+        - active
+      properties:
+        name:
+          type: string
+        age:
+          type: integer
+          format: int32
+        active:
+          type: boolean
+    NoneRequired:
+      type: object
+      properties:
+        label:
+          type: string
+        count:
+          type: integer
+          format: int64
+        score:
+          type: number
+          format: double
+        enabled:
+          type: boolean
+    MixedNullable:
+      type: object
+      required:
+        - requiredField
+        - requiredNullableField
+      properties:
+        requiredField:
+          type: string
+        notRequiredField:
+          type: integer
+          format: int32
+        requiredNullableField:
+          type: string
+          nullable: true
+        notRequiredNullableField:
+          type: number
+          format: float
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        nested:
+          $ref: '#/components/schemas/AllRequired'

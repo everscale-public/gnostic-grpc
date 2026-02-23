@@ -27,7 +27,7 @@ import (
 	surface_v1 "github.com/google/gnostic/surface"
 	"google.golang.org/genproto/googleapis/api/annotations"
 
-	"github.com/google/gnostic-grpc/utils"
+	"github.com/everscale-public/gnostic-grpc/utils"
 )
 
 // Gathers all symbolic references we generated in recursive calls.
@@ -145,7 +145,8 @@ func buildSymbolicReferences(renderer *Renderer) (symbolicFileDescriptors []*dpb
 			NewProtoLanguageModel().Prepare(surfaceModel, inputDocumentType)
 
 			// Recursively call the generator.
-			recursiveRenderer := NewRenderer(surfaceModel)
+			externalMetadata := NewSchemaMetadata(document)
+			recursiveRenderer := NewRenderer(surfaceModel, externalMetadata)
 			fileName := path.Base(ref)
 			recursiveRenderer.Package = strings.TrimSuffix(fileName, filepath.Ext(fileName))
 			newFdSet, err := recursiveRenderer.runFileDescriptorSetGenerator()

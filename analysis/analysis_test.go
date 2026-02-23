@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/google/gnostic-grpc/incompatibility"
+	"github.com/everscale-public/gnostic-grpc/incompatibility"
 )
 
 // TestGenerateAnalysis is a simple test that tests if
@@ -15,7 +15,7 @@ func TestGenerateAnalysis(t *testing.T) {
 		expectedNumOASProcessed int
 	}{
 		{"falseDir", "fake", 0},
-		{"dirWSubDir", "../generator/testfiles", 6},
+		{"dirWSubDir", "../generator/testfiles", 7},
 		{"dirWMalFile", "../incompatibility/oas-examples/malformed", 0},
 		{"3Docs", "../incompatibility/oas-examples", 4},
 		{"NoOpenAPIDocs", "../utils", 0},
