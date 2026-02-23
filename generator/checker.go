@@ -388,9 +388,6 @@ func getNotSupportedSchemaFields(schema *openapiv3.Schema) []string {
 	if schema == nil {
 		return fields
 	}
-	if schema.Nullable {
-		fields = append(fields, "nullable")
-	}
 	if schema.Discriminator != nil {
 		fields = append(fields, "discriminator")
 	}
@@ -453,9 +450,6 @@ func getNotSupportedSchemaFields(schema *openapiv3.Schema) []string {
 	}
 	if schema.MinProperties != 0 {
 		fields = append(fields, "minProperties")
-	}
-	if schema.Required != nil {
-		fields = append(fields, "required")
 	}
 	if schema.Not != nil {
 		fields = append(fields, "not")

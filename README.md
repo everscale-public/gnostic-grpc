@@ -39,6 +39,37 @@ Run gnostic with the plugin:
 
 This generates the gRPC service definition `examples/bookstore/bookstore.proto`.
 
+## Proto3 `optional` support (fork feature)
+
+This fork emits proto3 `optional` for scalar fields that are **not in the `required` array** or are marked **`nullable: true`** in the OpenAPI schema. This preserves the distinction between "field not set" and "field set to zero value" in downstream codegen (e.g., `Option<T>` in Rust with prost/tonic).
+
+Install this fork:
+
+    go install github.com/google/gnostic-grpc@latest
+
+Example — given this OpenAPI schema:
+
+```yaml
+Person:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+    age:
+      type: integer
+      format: int32
+```
+
+The generated `.proto` will be:
+
+```protobuf
+message Person {
+  string name = 1;           // required → plain field
+  optional int32 age = 2;    // not required → optional
+}
+```
+
 ## End-to-end example
 This [directory](https://github.com/google/gnostic-grpc/tree/master/examples/end-to-end) contains a tutorial on how to build a gRPC service that implements an OpenAPI specification.
 

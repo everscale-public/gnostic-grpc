@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	openapiv3 "github.com/google/gnostic/openapiv3"
 	surface "github.com/google/gnostic/surface"
 
 	"github.com/google/gnostic-grpc/utils"
@@ -69,6 +70,17 @@ func TestFileDescriptorGeneratorResponses(t *testing.T) {
 	checkContents(t, string(protoData), "goldstandard/responses.proto")
 }
 
+func TestFileDescriptorGeneratorOptional(t *testing.T) {
+	input := "testfiles/optional.yaml"
+
+	protoData, err := runGeneratorWithoutPluginEnvironment(input, "optional")
+	if err != nil {
+		handleError(err, t)
+	}
+
+	checkContents(t, string(protoData), "goldstandard/optional.proto")
+}
+
 func TestFileDescriptorGeneratorOther(t *testing.T) {
 	input := "testfiles/other.yaml"
 
@@ -93,12 +105,13 @@ func TestFileDescriptorGeneratorOther(t *testing.T) {
 }
 
 func runGeneratorWithoutPluginEnvironment(input string, packageName string) ([]byte, error) {
-	surfaceModel, err := buildSurfaceModel(input)
+	surfaceModel, doc, err := buildSurfaceModel(input)
 	if err != nil {
 		return nil, err
 	}
 	NewProtoLanguageModel().Prepare(surfaceModel, "openapi.v3.Document")
-	r := NewRenderer(surfaceModel)
+	metadata := NewSchemaMetadata(doc)
+	r := NewRenderer(surfaceModel, metadata)
 	r.Package = packageName
 
 	fdSet, err := r.runFileDescriptorSetGenerator()
@@ -113,13 +126,13 @@ func runGeneratorWithoutPluginEnvironment(input string, packageName string) ([]b
 	return f.Data, err
 }
 
-func buildSurfaceModel(input string) (*surface.Model, error) {
+func buildSurfaceModel(input string) (*surface.Model, *openapiv3.Document, error) {
 	documentv3, err := utils.ParseOpenAPIDoc(input)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	surfaceModel, err := surface.NewModelFromOpenAPI3(documentv3, input)
-	return surfaceModel, err
+	return surfaceModel, documentv3, err
 }
 
 func writeFile(output string, protoData []byte) {

@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package optional;
+
+import "google/api/annotations.proto";
+
+import "google/protobuf/descriptor.proto";
+
+import "google/protobuf/empty.proto";
+
+option go_package = ".;optional";
+
+message AllRequired {
+  string name = 1;
+
+  int32 age = 2;
+
+  bool active = 3;
+}
+
+message NoneRequired {
+  optional string label = 1;
+
+  optional int64 count = 2;
+
+  optional double score = 3;
+
+  optional bool enabled = 4;
+}
+
+message MixedNullable {
+  string required_field = 1;
+
+  optional int32 not_required_field = 2;
+
+  optional string required_nullable_field = 3;
+
+  optional float not_required_nullable_field = 4;
+
+  repeated string tags = 5;
+
+  AllRequired nested = 6;
+}
+
+service Optional {
+  rpc TestAllRequired ( google.protobuf.Empty ) returns ( AllRequired ) {
+    option (google.api.http) = { get:"/testAllRequired"  };
+  }
+
+  rpc TestNoneRequired ( google.protobuf.Empty ) returns ( NoneRequired ) {
+    option (google.api.http) = { get:"/testNoneRequired"  };
+  }
+
+  rpc TestMixedNullable ( google.protobuf.Empty ) returns ( MixedNullable ) {
+    option (google.api.http) = { get:"/testMixedNullable"  };
+  }
+}
+

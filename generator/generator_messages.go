@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/golang/protobuf/proto"
 	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	surface_v1 "github.com/google/gnostic/surface"
 	"google.golang.org/protobuf/types/descriptorpb"
@@ -31,9 +32,10 @@ func buildAllMessageDescriptors(renderer *Renderer) (messageDescriptors []*dpb.D
 				validateRequestParameter(surfaceField)
 			}
 
-			addFieldDescriptor(message, surfaceField, i, renderer.Package)
+			addFieldDescriptor(message, surfaceField, i, renderer.Package, renderer.Metadata, surfaceType.Name)
 			addEnumDescriptorIfNecessary(message, surfaceField)
 		}
+		processProto3OptionalFields(message)
 		messageDescriptors = append(messageDescriptors, message)
 		generatedMessages[*message.Name] = renderer.Package + "." + *message.Name
 	}
@@ -124,16 +126,35 @@ func validateQueryParameter(field *surface_v1.Field) {
 
 }
 
-func addFieldDescriptor(message *dpb.DescriptorProto, surfaceField *surface_v1.Field, idx int, packageName string) {
+func addFieldDescriptor(message *dpb.DescriptorProto, surfaceField *surface_v1.Field, idx int, packageName string, metadata *SchemaMetadata, originalTypeName string) {
 	count := int32(idx + 1)
 	fieldDescriptor := &dpb.FieldDescriptorProto{Number: &count, Name: &surfaceField.FieldName}
 	fieldDescriptor.Type = getFieldDescriptorType(surfaceField.NativeType, surfaceField.EnumValues)
 	fieldDescriptor.Label = getFieldDescriptorLabel(surfaceField)
 	fieldDescriptor.TypeName = getFieldDescriptorTypeName(*fieldDescriptor.Type, surfaceField, packageName)
 
+	if shouldSetProto3Optional(fieldDescriptor, surfaceField, metadata, originalTypeName) {
+		fieldDescriptor.Proto3Optional = proto.Bool(true)
+	}
+
 	addMapDescriptorIfNecessary(surfaceField, fieldDescriptor, message)
 
 	message.Field = append(message.Field, fieldDescriptor)
+}
+
+// shouldSetProto3Optional determines whether a field should be marked as proto3 optional.
+// Message types already have presence semantics, and repeated fields cannot be optional.
+func shouldSetProto3Optional(fd *dpb.FieldDescriptorProto, sf *surface_v1.Field, metadata *SchemaMetadata, originalTypeName string) bool {
+	if fd.GetType() == dpb.FieldDescriptorProto_TYPE_MESSAGE {
+		return false
+	}
+	if fd.GetLabel() == dpb.FieldDescriptorProto_LABEL_REPEATED {
+		return false
+	}
+	if metadata == nil {
+		return false
+	}
+	return metadata.ShouldBeOptional(originalTypeName, sf.Name)
 }
 
 // getFieldDescriptorType returns a field descriptor type for the given 'nativeType'. If it is not a scalar type

@@ -31,12 +31,15 @@ type Renderer struct {
 	FdSet          *dpb.FileDescriptorSet
 	SymbolicFdSets []*dpb.FileDescriptorSet
 	Package        string // package name
+	// Metadata holds nullable/required info extracted from the OpenAPI document.
+	Metadata *SchemaMetadata
 }
 
 // NewRenderer creates a renderer.
-func NewRenderer(model *surface.Model) (renderer *Renderer) {
+func NewRenderer(model *surface.Model, metadata *SchemaMetadata) (renderer *Renderer) {
 	renderer = &Renderer{}
 	renderer.Model = model
+	renderer.Metadata = metadata
 	renderer.SymbolicFdSets = make([]*dpb.FileDescriptorSet, 0)
 	return renderer
 }

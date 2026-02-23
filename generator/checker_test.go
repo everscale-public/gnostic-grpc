@@ -52,7 +52,6 @@ func TestFeatureCheckerRequestBodies(t *testing.T) {
 	checker := NewGrpcChecker(documentv3)
 	messages := checker.Run()
 	expectedMessageKeys := [][]string{
-		{"components", "schemas", "Person", "required"},
 		{"components", "schemas", "Person", "properties", "name", "example"},
 		{"components", "schemas", "Person", "properties", "photoUrls", "xml"},
 		{"components", "requestBodies", "RequestBody", "required"},
@@ -71,8 +70,6 @@ func TestFeatureCheckerResponses(t *testing.T) {
 	checker := NewGrpcChecker(documentv3)
 	messages := checker.Run()
 	expectedMessageKeys := [][]string{
-		{"components", "schemas", "Error", "required"},
-		{"components", "schemas", "Person", "required"},
 		{"components", "schemas", "Person", "properties", "name", "example"},
 		{"components", "schemas", "Person", "properties", "photoUrls", "xml"},
 	}
@@ -90,7 +87,6 @@ func TestFeatureCheckerOther(t *testing.T) {
 	checker := NewGrpcChecker(documentv3)
 	messages := checker.Run()
 	expectedMessageKeys := [][]string{
-		{"components", "schemas", "Person", "required"},
 		{"components", "schemas", "Person", "properties", "name", "example"},
 		{"components", "schemas", "Person", "properties", "photoUrls", "xml"},
 		{"paths", "/testAdditionalPropertiesArray", "get", "responses", "200", "content", "application/json", "schema", "additionalProperties"},
