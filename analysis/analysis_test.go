@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/google/gnostic-grpc/incompatibility"
+	"github.com/everscale-public/gnostic-grpc/incompatibility"
 )
 
 // TestGenerateAnalysis is a simple test that tests if

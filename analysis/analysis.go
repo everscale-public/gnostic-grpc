@@ -25,8 +25,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/gnostic-grpc/incompatibility"
-	"github.com/google/gnostic-grpc/utils"
+	"github.com/everscale-public/gnostic-grpc/incompatibility"
+	"github.com/everscale-public/gnostic-grpc/utils"
 )
 
 // main function for aggreation tool

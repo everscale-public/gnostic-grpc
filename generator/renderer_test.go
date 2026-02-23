@@ -25,7 +25,7 @@ import (
 	openapiv3 "github.com/google/gnostic/openapiv3"
 	surface "github.com/google/gnostic/surface"
 
-	"github.com/google/gnostic-grpc/utils"
+	"github.com/everscale-public/gnostic-grpc/utils"
 )
 
 const (

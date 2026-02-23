@@ -27,7 +27,7 @@ import (
 	surface_v1 "github.com/google/gnostic/surface"
 	"google.golang.org/genproto/googleapis/api/annotations"
 
-	"github.com/google/gnostic-grpc/utils"
+	"github.com/everscale-public/gnostic-grpc/utils"
 )
 
 // Gathers all symbolic references we generated in recursive calls.
