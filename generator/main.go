@@ -48,36 +48,29 @@ func RunProtoGenerator(env *plugins.Environment) {
 		}
 	}
 
-	// Second pass: process the surface model with metadata.
-	for _, model := range env.Request.Models {
-		if model.TypeUrl == "surface.v1.Model" {
-			surfaceModel := &surface.Model{}
-			err = proto.Unmarshal(model.Value, surfaceModel)
-			if err == nil {
-				// Collect local file $refs that gnostic doesn't add to SymbolicReferences.
-				if openAPIdocument != nil {
-					CollectLocalFileRefs(openAPIdocument, surfaceModel)
-				}
+	// Build the surface model from the OpenAPI document ourselves rather than
+	// using gnostic's pre-built surface model. Gnostic resolves local file $refs
+	// inline without creating Type entries for externally-defined schemas, which
+	// causes "unresolvable reference" errors.
+	if openAPIdocument != nil {
+		surfaceModel, err := surface.NewModelFromOpenAPI3(openAPIdocument, env.Request.SourceName)
+		env.RespondAndExitIfError(err)
 
-				// Customizes the surface model for a .proto output file
-				NewProtoLanguageModel().Prepare(surfaceModel, inputDocumentType)
+		CollectLocalFileRefs(openAPIdocument, surfaceModel)
+		NewProtoLanguageModel().Prepare(surfaceModel, inputDocumentType)
 
-				// Create the renderer.
-				renderer := NewRenderer(surfaceModel, metadata)
-				renderer.Package = packageName
-				if abs, err := filepath.Abs(env.Request.SourceName); err == nil {
-					renderer.SourceFile = abs
-				}
-
-				// Run the renderer to generate files and add them to the response object.
-				err = renderer.Render(env.Response, packageName+".proto")
-				env.RespondAndExitIfError(err)
-				// Return with success.
-				env.RespondAndExit()
-			}
+		renderer := NewRenderer(surfaceModel, metadata)
+		renderer.Package = packageName
+		if abs, err := filepath.Abs(env.Request.SourceName); err == nil {
+			renderer.SourceFile = abs
 		}
+
+		err = renderer.Render(env.Response, packageName+".proto")
+		env.RespondAndExitIfError(err)
+		env.RespondAndExit()
 	}
-	err = errors.New("No generated code surface model is available.")
+
+	err = errors.New("No OpenAPI v3 document is available.")
 	env.RespondAndExitIfError(err)
 }
 
