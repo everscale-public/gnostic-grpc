@@ -104,6 +104,22 @@ func TestFileDescriptorGeneratorOther(t *testing.T) {
 	}
 }
 
+func TestFileDescriptorGeneratorLocalFileRef(t *testing.T) {
+	// Use an absolute path so that gnostic's isSymbolicReference (url.ParseRequestURI)
+	// treats the source file itself as a symbolic reference — reproducing the self-import
+	// cycle bug that occurs in the real plugin environment.
+	input, err := filepath.Abs("testfiles/service_with_common.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	protoData, err := runGeneratorWithoutPluginEnvironment(input, "service_with_common")
+	if err != nil {
+		handleError(err, t)
+	}
+	checkContents(t, string(protoData), "goldstandard/service_with_common.proto")
+}
+
 func runGeneratorWithoutPluginEnvironment(input string, packageName string) ([]byte, error) {
 	surfaceModel, doc, err := buildSurfaceModel(input)
 	if err != nil {
@@ -113,6 +129,9 @@ func runGeneratorWithoutPluginEnvironment(input string, packageName string) ([]b
 	metadata := NewSchemaMetadata(doc)
 	r := NewRenderer(surfaceModel, metadata)
 	r.Package = packageName
+	if abs, err := filepath.Abs(input); err == nil {
+		r.SourceFile = abs
+	}
 
 	fdSet, err := r.runFileDescriptorSetGenerator()
 	r.FdSet = fdSet
@@ -132,6 +151,11 @@ func buildSurfaceModel(input string) (*surface.Model, *openapiv3.Document, error
 		return nil, nil, err
 	}
 	surfaceModel, err := surface.NewModelFromOpenAPI3(documentv3, input)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Collect local file $refs that gnostic doesn't add to SymbolicReferences.
+	CollectLocalFileRefs(documentv3, surfaceModel)
 	return surfaceModel, documentv3, err
 }
 

@@ -33,6 +33,9 @@ type Renderer struct {
 	Package        string // package name
 	// Metadata holds nullable/required info extracted from the OpenAPI document.
 	Metadata *SchemaMetadata
+	// SourceFile is the absolute path of the source OpenAPI file, used to resolve
+	// relative $ref paths and to filter self-references.
+	SourceFile string
 }
 
 // NewRenderer creates a renderer.

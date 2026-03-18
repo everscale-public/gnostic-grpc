@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package common;
+
+import "google/api/annotations.proto";
+
+import "google/protobuf/descriptor.proto";
+
+import "google/protobuf/empty.proto";
+
+option go_package = ".;common";
+
+message Label {
+  string key = 1;
+
+  optional string value = 2;
+}
+
+service Common {
+}
+

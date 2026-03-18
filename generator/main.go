@@ -34,10 +34,11 @@ func RunProtoGenerator(env *plugins.Environment) {
 
 	// First pass: extract the OpenAPI document and run the checker.
 	var metadata *SchemaMetadata
+	var openAPIdocument *openapiv3.Document
 	inputDocumentType := env.Request.Models[0].TypeUrl
 	for _, model := range env.Request.Models {
 		if model.TypeUrl == "openapi.v3.Document" {
-			openAPIdocument := &openapiv3.Document{}
+			openAPIdocument = &openapiv3.Document{}
 			err := proto.Unmarshal(model.Value, openAPIdocument)
 			if err == nil {
 				featureChecker := NewGrpcChecker(openAPIdocument)
@@ -53,12 +54,20 @@ func RunProtoGenerator(env *plugins.Environment) {
 			surfaceModel := &surface.Model{}
 			err = proto.Unmarshal(model.Value, surfaceModel)
 			if err == nil {
+				// Collect local file $refs that gnostic doesn't add to SymbolicReferences.
+				if openAPIdocument != nil {
+					CollectLocalFileRefs(openAPIdocument, surfaceModel)
+				}
+
 				// Customizes the surface model for a .proto output file
 				NewProtoLanguageModel().Prepare(surfaceModel, inputDocumentType)
 
 				// Create the renderer.
 				renderer := NewRenderer(surfaceModel, metadata)
 				renderer.Package = packageName
+				if abs, err := filepath.Abs(env.Request.SourceName); err == nil {
+					renderer.SourceFile = abs
+				}
 
 				// Run the renderer to generate files and add them to the response object.
 				err = renderer.Render(env.Response, packageName+".proto")

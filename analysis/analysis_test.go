@@ -15,7 +15,7 @@ func TestGenerateAnalysis(t *testing.T) {
 		expectedNumOASProcessed int
 	}{
 		{"falseDir", "fake", 0},
-		{"dirWSubDir", "../generator/testfiles", 7},
+		{"dirWSubDir", "../generator/testfiles", 9},
 		{"dirWMalFile", "../incompatibility/oas-examples/malformed", 0},
 		{"3Docs", "../incompatibility/oas-examples", 4},
 		{"NoOpenAPIDocs", "../utils", 0},

@@ -1,0 +1,17 @@
+openapi: 3.0.0
+info:
+  title: Common Types
+  version: "0.1.0"
+paths: {}
+components:
+  schemas:
+    Label:
+      type: object
+      required:
+        - key
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+          nullable: true

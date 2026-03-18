@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package service_with_common;
+
+import "common.proto";
+
+import "google/api/annotations.proto";
+
+import "google/protobuf/descriptor.proto";
+
+import "google/protobuf/empty.proto";
+
+option go_package = ".;service_with_common";
+
+message Resource {
+  string name = 1;
+
+  repeated common.Label labels = 2;
+}
+
+//CreateResourceParameters holds parameters to CreateResource
+message CreateResourceRequest {
+  Resource resource = 1;
+}
+
+service Service_with_common {
+  rpc ListResources ( google.protobuf.Empty ) returns ( Resource ) {
+    option (google.api.http) = { get:"/resources"  };
+  }
+
+  rpc CreateResource ( CreateResourceRequest ) returns ( Resource ) {
+    option (google.api.http) = { post:"/resources" body:"resource"  };
+  }
+}
+

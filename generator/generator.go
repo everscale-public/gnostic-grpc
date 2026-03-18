@@ -15,6 +15,7 @@
 package generator
 
 import (
+	"net/url"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -24,6 +25,7 @@ import (
 	"github.com/golang/protobuf/descriptor"
 	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/golang/protobuf/ptypes/empty"
+	openapiv3 "github.com/google/gnostic/openapiv3"
 	surface_v1 "github.com/google/gnostic/surface"
 	"google.golang.org/genproto/googleapis/api/annotations"
 
@@ -108,18 +110,47 @@ func buildSourceCodeInfo(types []*surface_v1.Type) (sourceCodeInfo *dpb.SourceCo
 	return sourceCodeInfo, nil
 }
 
-// buildSymbolicReferences recursively generates all .proto definitions to external OpenAPI descriptions (URLs to other
-// descriptions inside the current description).
+// resolveRef returns the ref as-is for HTTP(S) URLs, or resolves it to a clean absolute
+// file path for local file references so that gnostic can find the file.
+// sourceFile is the absolute path of the OpenAPI file that contains the $ref.
+func resolveRef(ref string, sourceFile string) string {
+	if strings.HasPrefix(ref, "http://") || strings.HasPrefix(ref, "https://") {
+		return ref
+	}
+	if filepath.IsAbs(ref) {
+		return filepath.Clean(ref)
+	}
+	if sourceFile != "" {
+		return filepath.Clean(filepath.Join(filepath.Dir(sourceFile), ref))
+	}
+	abs, err := filepath.Abs(ref)
+	if err != nil {
+		return ref
+	}
+	return filepath.Clean(abs)
+}
+
+// buildSymbolicReferences recursively generates all .proto definitions to external OpenAPI descriptions (URLs or local
+// file paths to other descriptions inside the current description).
 func buildSymbolicReferences(renderer *Renderer) (symbolicFileDescriptors []*dpb.FileDescriptorProto, err error) {
 	symbolicReferences := renderer.Model.SymbolicReferences
 	symbolicReferences = trimAndRemoveDuplicates(symbolicReferences)
 
 	for _, ref := range symbolicReferences {
-		if _, alreadyGenerated := generatedSymbolicReferences[ref]; !alreadyGenerated {
-			generatedSymbolicReferences[ref] = true
+		resolvedRef := resolveRef(ref, renderer.SourceFile)
+
+		// Skip self-references: gnostic's compiler cache can include the source file itself.
+		if resolvedRef == renderer.SourceFile {
+			continue
+		}
+
+		// Deduplicate by resolved path so that "./common.yaml" and "/abs/path/to/common.yaml"
+		// are recognized as the same file.
+		if _, alreadyGenerated := generatedSymbolicReferences[resolvedRef]; !alreadyGenerated {
+			generatedSymbolicReferences[resolvedRef] = true
 
 			// Lets get the standard gnostic output from the symbolic reference.
-			cmd := exec.Command("gnostic", "--pb-out=-", ref)
+			cmd := exec.Command("gnostic", "--pb-out=-", resolvedRef)
 			b, err := cmd.Output()
 			if err != nil {
 				return nil, err
@@ -147,6 +178,7 @@ func buildSymbolicReferences(renderer *Renderer) (symbolicFileDescriptors []*dpb
 			// Recursively call the generator.
 			externalMetadata := NewSchemaMetadata(document)
 			recursiveRenderer := NewRenderer(surfaceModel, externalMetadata)
+			recursiveRenderer.SourceFile = resolvedRef
 			fileName := path.Base(ref)
 			recursiveRenderer.Package = strings.TrimSuffix(fileName, filepath.Ext(fileName))
 			newFdSet, err := recursiveRenderer.runFileDescriptorSetGenerator()
@@ -253,6 +285,141 @@ func trimAndRemoveDuplicates(urls []string) []string {
 // getLast returns the last FileDescriptorProto of the array 'protos'.
 func getLast(protos []*dpb.FileDescriptorProto) *dpb.FileDescriptorProto {
 	return protos[len(protos)-1]
+}
+
+// CollectLocalFileRefs scans an OpenAPI v3 document for $ref values that point to local files
+// (i.e., not HTTP(S) URLs and not internal #/ refs) and adds them to the surface model's
+// SymbolicReferences so that buildSymbolicReferences will process them.
+func CollectLocalFileRefs(doc *openapiv3.Document, model *surface_v1.Model) {
+	refs := make(map[string]bool)
+	collectRefsFromSchemaOrReferences(doc, refs)
+
+	for ref := range refs {
+		if !isHTTPRef(ref) && !isInternalRef(ref) {
+			// Strip the fragment (e.g., #/components/schemas/Label) to get the file path
+			filePath := ref
+			if idx := strings.Index(ref, "#"); idx >= 0 {
+				filePath = ref[:idx]
+			}
+			if filePath != "" && !utils.Contains(model.SymbolicReferences, filePath) {
+				model.SymbolicReferences = append(model.SymbolicReferences, filePath)
+			}
+		}
+	}
+}
+
+func isHTTPRef(ref string) bool {
+	return strings.HasPrefix(ref, "http://") || strings.HasPrefix(ref, "https://")
+}
+
+func isInternalRef(ref string) bool {
+	_, err := url.ParseRequestURI(ref)
+	if err == nil {
+		return false
+	}
+	return strings.HasPrefix(ref, "#")
+}
+
+// collectRefsFromSchemaOrReferences walks the OpenAPI document's components/schemas
+// to find all $ref values.
+func collectRefsFromSchemaOrReferences(doc *openapiv3.Document, refs map[string]bool) {
+	if doc.Components == nil || doc.Components.Schemas == nil {
+		return
+	}
+	for _, pair := range doc.Components.Schemas.AdditionalProperties {
+		collectRefsFromSchemaOrRef(pair.Value, refs)
+	}
+	// Also check paths for inline $refs
+	if doc.Paths != nil {
+		for _, pathPair := range doc.Paths.Path {
+			collectRefsFromPathItem(pathPair.Value, refs)
+		}
+	}
+}
+
+func collectRefsFromPathItem(pathItem *openapiv3.PathItem, refs map[string]bool) {
+	if pathItem == nil {
+		return
+	}
+	ops := []*openapiv3.Operation{
+		pathItem.Get, pathItem.Put, pathItem.Post, pathItem.Delete,
+		pathItem.Options, pathItem.Head, pathItem.Patch, pathItem.Trace,
+	}
+	for _, op := range ops {
+		if op == nil {
+			continue
+		}
+		for _, param := range op.Parameters {
+			if ref := param.GetReference(); ref != nil {
+				refs[ref.XRef] = true
+			}
+		}
+		if op.RequestBody != nil {
+			if ref := op.RequestBody.GetReference(); ref != nil {
+				refs[ref.XRef] = true
+			}
+			if rb := op.RequestBody.GetRequestBody(); rb != nil {
+				collectRefsFromMediaTypes(rb.Content, refs)
+			}
+		}
+		if op.Responses != nil {
+			for _, respPair := range op.Responses.ResponseOrReference {
+				if ref := respPair.Value.GetReference(); ref != nil {
+					refs[ref.XRef] = true
+				}
+				if resp := respPair.Value.GetResponse(); resp != nil {
+					collectRefsFromMediaTypes(resp.Content, refs)
+				}
+			}
+		}
+	}
+}
+
+func collectRefsFromMediaTypes(mediaTypes *openapiv3.MediaTypes, refs map[string]bool) {
+	if mediaTypes == nil {
+		return
+	}
+	for _, mt := range mediaTypes.AdditionalProperties {
+		if mt.Value != nil && mt.Value.Schema != nil {
+			collectRefsFromSchemaOrRef(mt.Value.Schema, refs)
+		}
+	}
+}
+
+func collectRefsFromSchemaOrRef(sor *openapiv3.SchemaOrReference, refs map[string]bool) {
+	if sor == nil {
+		return
+	}
+	if ref := sor.GetReference(); ref != nil {
+		refs[ref.XRef] = true
+		return
+	}
+	schema := sor.GetSchema()
+	if schema == nil {
+		return
+	}
+	if schema.Properties != nil {
+		for _, prop := range schema.Properties.AdditionalProperties {
+			collectRefsFromSchemaOrRef(prop.Value, refs)
+		}
+	}
+	if schema.Items != nil {
+		for _, item := range schema.Items.SchemaOrReference {
+			collectRefsFromSchemaOrRef(item, refs)
+		}
+	}
+	if schema.AdditionalProperties != nil {
+		collectRefsFromSchemaOrRef(schema.AdditionalProperties.GetSchemaOrReference(), refs)
+	}
+	for _, s := range schema.OneOf {
+		collectRefsFromSchemaOrRef(s, refs)
+	}
+	for _, s := range schema.AnyOf {
+		collectRefsFromSchemaOrRef(s, refs)
+	}
+	for _, s := range schema.AllOf {
+		collectRefsFromSchemaOrRef(s, refs)
+	}
 }
 
 func (renderer *Renderer) buildFileOptions() *dpb.FileOptions {
